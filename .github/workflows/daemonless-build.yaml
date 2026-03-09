@@ -125,7 +125,7 @@ jobs:
             mkdir -p /etc/pkg
             sed -i "" -e 's|quarterly|latest|g' /etc/pkg/FreeBSD.conf
             pkg update -f
-            pkg install -y podman jq skopeo buildah trivy python3 py311-pyyaml
+            pkg install -y podman jq skopeo buildah python3 py311-pyyaml
 
             rm -rf /var/db/containers /var/lib/containers 2>/dev/null || true
             kldload pf
