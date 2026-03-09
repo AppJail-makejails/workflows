@@ -1,0 +1,191 @@
+# BSD 2-Clause License
+#
+# Copyright (c) 2025-2026, Daemonless
+# Copyright (c) 2026, Jesús Daniel Colmenares Oviedo <dtxdf@disroot.org>
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+name: Daemonless-based workflow
+
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        description: 'Image name (e.g., radarr, sonarr)'
+        required: true
+        type: string
+      variant:
+        description: 'Variant to build (blank=all)'
+        required: false
+        type: string
+        default: ''
+
+env:
+  REGISTRY: ghcr.io
+  DBUILD_REF: v1.5.0
+
+jobs:
+  # Detect which variants exist and build dynamic matrix
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      architectures: ${{ steps.detect.outputs.architectures }}
+      manifest_tags: ${{ steps.detect.outputs.manifest_tags }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: pip install PyYAML
+
+      - name: Detect build matrix
+        id: detect
+        run: |
+          # Fetch dbuild
+          curl -sSL "https://github.com/daemonless/dbuild/archive/${{ env.DBUILD_REF }}.tar.gz" | tar xz -C /tmp
+          DBUILD_DIR=$(ls -d /tmp/dbuild-* | head -1)
+          export PYTHONPATH="$DBUILD_DIR"
+          python3 -m dbuild detect --format github ${{ inputs.variant && format('--variant {0}', inputs.variant) || '' }}
+
+  build:
+    needs: detect
+    if: ${{ needs.detect.outputs.matrix != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare VM data directory
+        run: sudo mkdir -p /mnt/freebsd-vm && sudo chmod 777 /mnt/freebsd-vm
+
+      - name: Build in FreeBSD VM (${{ matrix.tag }}${{ matrix.arch_suffix }})
+        uses: vmactions/freebsd-vm@v1.4.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          DBUILD_REGISTRY: ghcr.io/appjail-makejails
+        with:
+          release: "15.0"
+          arch: ${{ matrix.vm_arch }}
+          sync: ${{ matrix.vm_sync }}
+          usesh: true
+          copyback: true
+          data-dir: /mnt/freebsd-vm
+          debug-on-error: true
+          envs: "GITHUB_TOKEN GITHUB_ACTOR DBUILD_REGISTRY"
+          prepare: |
+            set -e
+            # Create 4GB swap for heavy builds
+            dd if=/dev/zero of=/swapfile bs=1m count=4096
+            chmod 0600 /swapfile
+            mdconfig -a -t vnode -f /swapfile -u 0
+            swapon /dev/md0
+
+            # Use latest repo for CI tools (quarterly often has sync issues)
+            mkdir -p /etc/pkg
+            sed -i "" -e 's|quarterly|latest|g' /etc/pkg/FreeBSD.conf
+            pkg update -f
+            pkg install -y podman jq skopeo buildah trivy python3 py311-pyyaml
+
+            rm -rf /var/db/containers /var/lib/containers 2>/dev/null || true
+            kldload pf
+            sysctl net.inet.ip.forwarding=1
+            sysctl kern.ipc.shm_allow_removed=1
+          run: |
+            set -e
+
+            # Fetch dbuild
+            fetch -qo /tmp/dbuild.tar.gz \
+              "https://github.com/daemonless/dbuild/archive/${{ env.DBUILD_REF }}.tar.gz"
+            mkdir -p /tmp/dbuild
+            tar -xzf /tmp/dbuild.tar.gz -C /tmp/dbuild --strip-components=1
+            export PYTHONPATH="/tmp/dbuild"
+            DBUILD="python3 -m dbuild"
+
+            echo "=== dbuild CI (GitHub Actions) ==="
+            $DBUILD --version
+
+            VARIANT="${{ matrix.tag }}"
+            ARCH="${{ matrix.arch }}"
+
+            # Build
+            $DBUILD -v build --variant "$VARIANT" --arch "$ARCH"
+
+            # Only push if tests are not a PR
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "PR build - skipping push"
+            else
+              # Free disk before push
+              swapoff /dev/md0 2>/dev/null; mdconfig -d -u 0 2>/dev/null; rm -f /swapfile
+              podman image prune -f
+              pkg clean -ay
+              rm -rf /tmp/cit-*
+
+              $DBUILD -v push --variant "$VARIANT" --arch "$ARCH"
+            fi
+
+  # Create multi-arch manifests
+  create-manifests:
+    needs: [detect, build]
+    if: success() && github.event_name != 'pull_request' && contains(needs.detect.outputs.architectures, 'aarch64')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Create and push manifests
+        env:
+          MANIFEST_TAGS: ${{ needs.detect.outputs.manifest_tags }}
+        run: |
+          IMAGE_NAME="${{ inputs.image_name }}"
+
+          for tag in $MANIFEST_TAGS; do
+            echo "=== Creating manifest for $tag ==="
+
+            # GHCR manifest
+            podman manifest create ghcr.io/appjail-makejails/${IMAGE_NAME}:${tag} \
+              ghcr.io/appjail-makejails/${IMAGE_NAME}:${tag} \
+              ghcr.io/appjail-makejails/${IMAGE_NAME}:${tag}-aarch64 || continue
+            podman manifest push ghcr.io/appjail-makejails/${IMAGE_NAME}:${tag} \
+              docker://ghcr.io/appjail-makejails/${IMAGE_NAME}:${tag}
+          done
