@@ -195,10 +195,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send message to Telegram
-        uses: Lukasss93/telegram-action@v2
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.telegram_token }}
-          TELEGRAM_CHAT: ${{ secrets.telegram_chat }}
-        if: always()
+        uses: appleboy/telegram-action@master
         with:
-          status: ${{job.status}}
+          to: ${{ secrets.telegram_chat }}
+          token: ${{ secrets.telegram_token }}
