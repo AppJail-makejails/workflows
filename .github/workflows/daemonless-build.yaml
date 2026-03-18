@@ -191,6 +191,7 @@ jobs:
           done
 
   notify:
+    needs: build
     name: Notify via Telegram
     runs-on: ubuntu-latest
     steps:
