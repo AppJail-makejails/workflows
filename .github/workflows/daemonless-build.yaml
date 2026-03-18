@@ -210,3 +210,26 @@ jobs:
             podman manifest push ghcr.io/appjail-makejails/${IMAGE_NAME}:${tag} \
               docker://ghcr.io/appjail-makejails/${IMAGE_NAME}:${tag}
           done
+
+  notify-last:
+    needs: build
+    name: Notify via Telegram after build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send message to Telegram
+        uses: appleboy/telegram-action@master
+        if: always()
+        with:
+          to: ${{ secrets.telegram_chat }}
+          token: ${{ secrets.telegram_token }}
+          format: markdown
+          message: |
+            ${{ job.status == 'success' && '✅' || job.status == 'failure' && '❌' || '⚠️' }} *Workflow ${{ job.status }}*
+
+            📦 *Repo:* `${{ github.repository }}`
+            👤 *Actor:* `${{ github.actor }}`
+            🌿 *Branch:* `${{ github.ref_name }}`
+
+            📝 *Commit:* > ${{ github.event.commits[0].message }}
+
+            🔗 [View Job Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
