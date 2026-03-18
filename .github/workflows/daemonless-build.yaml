@@ -54,13 +54,17 @@ jobs:
         with:
           to: ${{ secrets.telegram_chat }}
           token: ${{ secrets.telegram_token }}
+          format: markdown
           message: |
-            ${{ github.actor }} created commit:
-            Commit message: ${{ github.event.commits[0].message }}
+            🚀 *New Commit in ${{ github.repository }}*
 
-            Repository: ${{ github.repository }}
+            👤 *Author:* `${{ github.actor }}`
+            🌿 *Branch:* `${{ github.ref_name }}`
 
-            See changes: https://github.com/${{ github.repository }}/commit/${{github.sha}}
+            📝 *Message:*
+            > ${{ github.event.commits[0].message }}
+
+            🔗 [View Changes](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
 
   # Detect which variants exist and build dynamic matrix
   detect:
