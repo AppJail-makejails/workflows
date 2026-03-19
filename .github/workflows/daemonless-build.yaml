@@ -61,7 +61,7 @@ jobs:
             👤 *Author:* `${{ github.actor }}`
             🌿 *Branch:* `${{ github.ref_name }}`
 
-            📝 *Message:*
+            📝 *Commit:*
             > ${{ github.event.commits[0].message }}
 
             🔗 [View Changes](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
@@ -227,9 +227,10 @@ jobs:
             ${{ job.status == 'success' && '✅' || job.status == 'failure' && '❌' || '⚠️' }} *Workflow ${{ job.status }}*
 
             📦 *Repo:* `${{ github.repository }}`
-            👤 *Actor:* `${{ github.actor }}`
+            👤 *Author:* `${{ github.actor }}`
             🌿 *Branch:* `${{ github.ref_name }}`
 
-            📝 *Commit:* > ${{ github.event.commits[0].message }}
+            📝 *Commit:*
+            > ${{ github.event.commits[0].message }}
 
             🔗 [View Job Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
