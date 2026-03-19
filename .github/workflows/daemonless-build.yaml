@@ -62,7 +62,7 @@ jobs:
             🌿 *Branch:* `${{ github.ref_name }}`
 
             📝 *Commit:*
-            > ${{ github.event.commits[0].message }}
+            > `${{ github.event.commits[0].message }}`
 
             🔗 [View Changes](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
 
@@ -231,6 +231,6 @@ jobs:
             🌿 *Branch:* `${{ github.ref_name }}`
 
             📝 *Commit:*
-            > ${{ github.event.commits[0].message }}
+            > `${{ github.event.commits[0].message }}`
 
             🔗 [View Job Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
