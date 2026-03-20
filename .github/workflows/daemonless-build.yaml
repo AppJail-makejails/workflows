@@ -132,7 +132,7 @@ jobs:
           usesh: true
           copyback: true
           data-dir: /mnt/freebsd-vm
-          debug-on-error: true
+          debug-on-error: false
           envs: "GITHUB_TOKEN GITHUB_ACTOR DBUILD_REGISTRY"
           prepare: |
             set -e
