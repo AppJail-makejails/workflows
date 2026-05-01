@@ -214,12 +214,12 @@ jobs:
 
   notify-last:
     needs: build
+    if: always()
     name: Notify via Telegram after build
     runs-on: ubuntu-latest
     steps:
       - name: Send message to Telegram
         uses: appleboy/telegram-action@master
-        if: always()
         with:
           to: ${{ secrets.telegram_chat }}
           token: ${{ secrets.telegram_token }}
