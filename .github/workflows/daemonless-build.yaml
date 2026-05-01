@@ -103,15 +103,16 @@ jobs:
 
     steps:
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: endersonmenezes/free-disk-space@v3
         with:
-          tool-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: false
+          remove_tool_cache: true
+          remove_android: true
+          remove_dotnet: true
+          remove_haskell: true
+          remove_swap: true
+          remove_packages: "azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox mono-complete"
+          remove_packages_one_command: true
+          rm_cmd: rmz
 
       - name: Checkout repository
         uses: actions/checkout@v4
