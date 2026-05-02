@@ -56,11 +56,12 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
     outputs:
       clean_msg: ${{ steps.sanitize.outputs.msg }}
+    env:
+      RAW_MSG: ${{ inputs.reason }}
     steps:
       - name: Sanitize
         id: sanitize
         run: |
-          RAW_MSG="${{ inputs.reason }}"
           CLEAN_MSG=$(echo "$RAW_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
           echo "msg=$CLEAN_MSG" >> $GITHUB_OUTPUT
       - name: Send message to Telegram
@@ -84,11 +85,12 @@ jobs:
     if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && github.event_name != 'pull_request'
     outputs:
       clean_msg: ${{ steps.sanitize.outputs.msg }}
+    env:
+      RAW_MSG: ${{ github.event.commits[0].message }}
     steps:
       - name: Sanitize
         id: sanitize
         run: |
-          RAW_MSG="${{ github.event.commits[0].message }}"
           CLEAN_MSG=$(echo "$RAW_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
           echo "msg=$CLEAN_MSG" >> $GITHUB_OUTPUT
       - name: Send message to Telegram
