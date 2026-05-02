@@ -39,12 +39,45 @@ on:
         required: false
         type: string
         default: ''
+      reason:
+        description: 'Brief description'
+        required: false
+        type: string
+        default: 'No description provided'
 
 env:
   REGISTRY: ghcr.io
   DBUILD_REF: v1.8.5
 
 jobs:
+  notify-generic:
+    name: Notify via Telegram (generic)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+    outputs:
+      clean_msg: ${{ steps.sanitize.outputs.msg }}
+    steps:
+      - name: Sanitize
+        id: sanitize
+        run: |
+          RAW_MSG="${{ inputs.reason }}"
+          CLEAN_MSG=$(echo "$RAW_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+          echo "msg=$CLEAN_MSG" >> $GITHUB_OUTPUT
+      - name: Send message to Telegram
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.telegram_chat }}
+          token: ${{ secrets.telegram_token }}
+          format: html
+          message: |
+            🚀 <strong>New event '${{ github.event_name }}' in ${{ github.repository }}</strong>
+
+            👤 <strong>Author:</strong> <code>${{ github.actor }}</code>
+            🌿 <strong>Branch:</strong> <code>${{ github.ref_name }}</code>
+            📝 <strong>Reason:</strong> ${{ steps.sanitize.outputs.msg }}
+
+            🔗 <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Job Details</a>
+
   notify:
     name: Notify via Telegram
     runs-on: ubuntu-latest
@@ -221,6 +254,28 @@ jobs:
               docker://ghcr.io/appjail-makejails/${IMAGE_NAME}:${tag}
           done
 
+  notify-last-generic:
+    needs: [notify-generic, build]
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request')
+    name: Notify via Telegram after build (generic)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send message to Telegram
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.telegram_chat }}
+          token: ${{ secrets.telegram_token }}
+          format: html
+          message: |
+            ${{ needs.build.result == 'success' && '✅' || needs.build.result == 'failure' && '❌' || '⚠️' }} <strong>Workflow ${{ needs.build.result }}</strong>
+
+            📦 <strong>Repo:</strong> <code>${{ github.repository }}</code>
+            👤 <strong>Author:</strong> <code>${{ github.actor }}</code>
+            🌿 <strong>Branch:</strong> <code>${{ github.ref_name }}</code>
+            📝 <strong>Reason:</strong> ${{ needs.notify-generic.outputs.clean_msg  }}
+
+            🔗 <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Job Details</a>
+
   notify-last:
     needs: [notify, build]
     if: always() && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && github.event_name != 'pull_request'
@@ -234,13 +289,13 @@ jobs:
           token: ${{ secrets.telegram_token }}
           format: html
           message: |
-            ${{ job.status == 'success' && '✅' || job.status == 'failure' && '❌' || '⚠️' }} <strong>Workflow ${{ job.status }}</strong>
+            ${{ needs.build.result == 'success' && '✅' || needs.build.result == 'failure' && '❌' || '⚠️' }} <strong>Workflow ${{ needs.build.result }}</strong>
 
             📦 <strong>Repo:</strong> <code>${{ github.repository }}</code>
             👤 <strong>Author:</strong> <code>${{ github.actor }}</code>
             🌿 <strong>Branch:</strong> <code>${{ github.ref_name }}</code>
 
             📝 <strong>Commit:</strong>
-            > <code>${{ needs.notify.outputs.clean_msg }}</Code>
+            > <code>${{ needs.notify.outputs.clean_msg }}</code>
 
             🔗 <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Job Details</a>
