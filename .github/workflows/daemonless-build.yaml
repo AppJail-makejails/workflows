@@ -48,23 +48,32 @@ jobs:
   notify:
     name: Notify via Telegram
     runs-on: ubuntu-latest
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && github.event_name != 'pull_request'
+    outputs:
+      clean_msg: ${{ steps.sanitize.outputs.msg }}
     steps:
+      - name: Sanitize
+        id: sanitize
+        run: |
+          RAW_MSG="${{ github.event.commits[0].message }}"
+          CLEAN_MSG=$(echo "$RAW_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+          echo "msg=$CLEAN_MSG" >> $GITHUB_OUTPUT
       - name: Send message to Telegram
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.telegram_chat }}
           token: ${{ secrets.telegram_token }}
-          format: markdown
+          format: html
           message: |
-            🚀 *New Commit in ${{ github.repository }}*
+            🚀 <strong>New Commit in ${{ github.repository }}</strong>
 
-            👤 *Author:* `${{ github.actor }}`
-            🌿 *Branch:* `${{ github.ref_name }}`
+            👤 <strong>Author:</strong> <code>${{ github.actor }}</code>
+            🌿 <strong>Branch:</strong> <code>${{ github.ref_name }}</code>
 
-            📝 *Commit:*
-            > `${{ github.event.commits[0].message }}`
+            📝 <strong>Commit:</strong>
+            > <code>${{ steps.sanitize.outputs.msg }}</code>
 
-            🔗 [View Changes](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+            🔗 <a href="https://github.com/${{ github.repository }}/commit/${{ github.sha }}">View Changes</a>
 
   # Detect which variants exist and build dynamic matrix
   detect:
@@ -213,8 +222,8 @@ jobs:
           done
 
   notify-last:
-    needs: build
-    if: always()
+    needs: [notify, build]
+    if: always() && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && github.event_name != 'pull_request'
     name: Notify via Telegram after build
     runs-on: ubuntu-latest
     steps:
@@ -223,15 +232,15 @@ jobs:
         with:
           to: ${{ secrets.telegram_chat }}
           token: ${{ secrets.telegram_token }}
-          format: markdown
+          format: html
           message: |
-            ${{ job.status == 'success' && '✅' || job.status == 'failure' && '❌' || '⚠️' }} *Workflow ${{ job.status }}*
+            ${{ job.status == 'success' && '✅' || job.status == 'failure' && '❌' || '⚠️' }} <strong>Workflow ${{ job.status }}</strong>
 
-            📦 *Repo:* `${{ github.repository }}`
-            👤 *Author:* `${{ github.actor }}`
-            🌿 *Branch:* `${{ github.ref_name }}`
+            📦 <strong>Repo:</strong> <code>${{ github.repository }}</code>
+            👤 <strong>Author:</strong> <code>${{ github.actor }}</code>
+            🌿 <strong>Branch:</strong> <code>${{ github.ref_name }}</code>
 
-            📝 *Commit:*
-            > `${{ github.event.commits[0].message }}`
+            📝 <strong>Commit:</strong>
+            > <code>${{ needs.notify.outputs.clean_msg }}</Code>
 
-            🔗 [View Job Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            🔗 <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Job Details</a>
