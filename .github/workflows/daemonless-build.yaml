@@ -63,7 +63,10 @@ jobs:
         id: sanitize
         run: |
           CLEAN_MSG=$(echo "$RAW_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-          echo "msg=$CLEAN_MSG" >> $GITHUB_OUTPUT
+          EOF=$(openssl rand -hex 8)
+          echo "msg<<$EOF" >> $GITHUB_OUTPUT
+          echo "$CLEAN_MSG" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
       - name: Send message to Telegram
         uses: appleboy/telegram-action@master
         with:
@@ -92,7 +95,10 @@ jobs:
         id: sanitize
         run: |
           CLEAN_MSG=$(echo "$RAW_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-          echo "msg=$CLEAN_MSG" >> $GITHUB_OUTPUT
+          EOF=$(openssl rand -hex 8)
+          echo "msg<<$EOF" >> $GITHUB_OUTPUT
+          echo "$CLEAN_MSG" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
       - name: Send message to Telegram
         uses: appleboy/telegram-action@master
         with:
