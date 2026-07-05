@@ -222,7 +222,7 @@ jobs:
 
             # Cache directories
             CACHE_PREFIX="/var/cache/dbuild"
-            mkdir -p "${CACHE_PREFIX}/pkgcache"
+            mkdir -p "${CACHE_PREFIX}/pkgcache0"
 
             # Build
             $DBUILD -v build --variant "$VARIANT" --arch "$ARCH"
