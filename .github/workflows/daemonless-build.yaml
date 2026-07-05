@@ -47,7 +47,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  DBUILD_REF: v1.9.3
+  DBUILD_REF: main
 
 jobs:
   notify-generic:
