@@ -220,6 +220,10 @@ jobs:
             VARIANT="${{ matrix.tag }}"
             ARCH="${{ matrix.arch }}"
 
+            # Cache directories
+            CACHE_PREFIX="/var/cache/dbuild"
+            mkdir -p "${CACHE_PREFIX}/pkgcache"
+
             # Build
             $DBUILD -v build --variant "$VARIANT" --arch "$ARCH"
 
