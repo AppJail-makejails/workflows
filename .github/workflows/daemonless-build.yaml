@@ -222,7 +222,9 @@ jobs:
 
             # Cache directories
             CACHE_PREFIX="/var/cache/dbuild"
-            mkdir -p "${CACHE_PREFIX}/pkgcache0"
+            for cache_dir in pkgcache0 pip npm cargo; do
+              mkdir -p "${CACHE_PREFIX}/${cache_dir}"
+            done
 
             # Build
             $DBUILD -v build --variant "$VARIANT" --arch "$ARCH"
