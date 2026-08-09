@@ -222,7 +222,7 @@ jobs:
 
             # Cache directories
             CACHE_PREFIX="/var/cache/dbuild"
-            for cache_dir in pkgcache0 pip npm cargo; do
+            for cache_dir in pkgcache0 pip npm cargo gem; do
               mkdir -p "${CACHE_PREFIX}/${cache_dir}"
             done
 
