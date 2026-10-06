@@ -177,7 +177,7 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           DBUILD_REGISTRY: ghcr.io/appjail-makejails
         with:
-          release: "15.0"
+          release: "15.1"
           arch: ${{ matrix.vm_arch }}
           sync: ${{ matrix.vm_sync }}
           usesh: true
