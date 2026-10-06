@@ -203,6 +203,8 @@ jobs:
             kldload pf
             sysctl net.inet.ip.forwarding=1
             sysctl kern.ipc.shm_allow_removed=1
+
+            service linux onestart
           run: |
             set -e
 
