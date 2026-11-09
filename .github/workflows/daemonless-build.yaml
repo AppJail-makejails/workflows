@@ -199,6 +199,8 @@ jobs:
             pkg update -f
             pkg install -y podman jq skopeo buildah python3 py312-pyyaml
 
+            sed -I .bak -e 's/driver = "zfs"/driver = "vfs"/' /usr/local/etc/containers/storage.conf
+
             rm -rf /var/db/containers /var/lib/containers 2>/dev/null || true
             kldload pf
             sysctl net.inet.ip.forwarding=1
