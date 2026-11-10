@@ -153,7 +153,7 @@ jobs:
 
     steps:
       - name: Free disk space
-        uses: endersonmenezes/free-disk-space@v3
+        uses: endersonmenezes/free-disk-space@v4
         with:
           remove_tool_cache: true
           remove_android: true
@@ -187,11 +187,11 @@ jobs:
           envs: "GITHUB_TOKEN GITHUB_ACTOR DBUILD_REGISTRY"
           prepare: |
             set -e
-            # Create 4GB swap for heavy builds
-            dd if=/dev/zero of=/swapfile bs=1m count=4096
-            chmod 0600 /swapfile
-            mdconfig -a -t vnode -f /swapfile -u 0
-            swapon /dev/md0
+            ## Create 4GB swap for heavy builds
+            #dd if=/dev/zero of=/swapfile bs=1m count=4096
+            #chmod 0600 /swapfile
+            #mdconfig -a -t vnode -f /swapfile -u 0
+            #swapon /dev/md0
 
             # Use latest repo for CI tools (quarterly often has sync issues)
             mkdir -p /etc/pkg
@@ -238,7 +238,7 @@ jobs:
               echo "PR build - skipping push"
             else
               # Free disk before push
-              swapoff /dev/md0 2>/dev/null; mdconfig -d -u 0 2>/dev/null; rm -f /swapfile
+              #swapoff /dev/md0 2>/dev/null; mdconfig -d -u 0 2>/dev/null; rm -f /swapfile
               podman image prune -f
               pkg clean -ay
               rm -rf /tmp/cit-*
